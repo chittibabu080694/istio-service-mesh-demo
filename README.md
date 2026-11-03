@@ -53,3 +53,40 @@ Save this as `architecture.md` in your repository for technical recruiters or sy
 
 ## 1. System Context & Topology
 In modern microservices architectures, decoupling application logic from network routing, security, and telemetry is critical for scalability. This project implements a service mesh abstraction layer using **Istio** and **Envoy** proxies running inside a containerized Kubernetes cluster.
+
+## 2. Core Components Breakdown
+
+### Data Plane (Envoy Proxies)
+- Intercepts all inbound and outbound network traffic for microservices.
+- Automatically handles service discovery, health checks, load balancing, and mTLS encryption/decryption transparently.
+
+### Control Plane (`istiod`)
+- **Pilot**: Converts high-level Istio routing rules (`VirtualService`, `DestinationRule`) into standard Envoy configuration and dynamically propagates them to sidecars.
+- **Citadel**: Manages automated cryptographic certificate generation, rotation, and mutual TLS identity provisioning.
+
+## 3. Traffic Management Mechanics
+- **Subsets**: `DestinationRule` establishes version-specific logical subsets (`v1` and `v2`) using Kubernetes pod labels.
+- **Weighted Routing**: `VirtualService` acts as an intelligent router, allocating traffic percentages at the L7 HTTP layer without requiring client-side load balancing logic.
+
+## 4. Security & Zero-Trust Posture
+- Enforcing `PeerAuthentication` with `mode: STRICT` ensures that plaintext communication within the cluster is rejected. 
+- Identity is verified cryptographically using SPIFFE IDs embedded in Istio-managed X.509 certificates exchanged during the TLS handshake.
+
+┌───────────────────────────────────────────────┐
+│ Kubernetes Cluster (Default Namespace)        │
+│                                               │
+│  ┌─────────────────[47m [0m                        │
+│  │ Ingress Gateway │                           │
+│  └────────┬────────┘                           │
+│           │                                   │
+│           ▼                                   │
+│  ┌─────────────────────────────────────────┐  │
+│  │ VirtualService (Traffic Split / Faults) │  │
+│  └────┬───────────────────────────────┬────┘  │
+│       │ 80%                           │ 20%   │
+│       ▼                               ▼       │
+│  ┌──────────────┐               ┌──────────┐  │
+│  │ backend-v1   │               │ backend-v2│  │
+│  │ + Envoy Proxy│               │+Envoy Prox│  │
+│  └──────────────┘               └──────────┘  │
+└───────────────────────────────────────────────┘
