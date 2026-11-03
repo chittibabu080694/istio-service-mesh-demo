@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-v1
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: backend
+        version: v1
+    spec:
+      containers:
+      - name: backend
+        image: hashicorp/http-echo:latest
+        args: ["-text=Hello from Backend v1"]
+        ports:
+        - containerPort: 5678
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: default
+spec:
+  selector:
+    app: backend
+  ports:
+  - port: 5678
+    name: http
